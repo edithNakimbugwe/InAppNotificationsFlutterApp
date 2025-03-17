@@ -1,40 +1,59 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:reminder_app/models/reminder_model.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-class ApiService {
-  static const String baseUrl = "https://3a15-41-75-191-200.ngrok-free.app/api/reminders";
+class NotificationService {
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
 
-  static Future<List<Reminder>> getReminders() async {
-    final response = await http.get(Uri.parse(baseUrl));
-    if (response.statusCode == 200) {
-      List<dynamic> data = jsonDecode(response.body);
-      return data.map((e) => Reminder.fromJson(e)).toList();
-    } else {
-      throw Exception("Failed to load reminders");
-    }
-  }
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
-  static Future<void> addReminder(Reminder reminder) async {
-    final response = await http.post(
-      Uri.parse(baseUrl),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(reminder.toJson()),
+  Future<void> init() async {
+    tz.initializeTimeZones();
+
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: androidSettings,
     );
 
-    if (response.statusCode != 201) {
-      print("Add reminder failed with status: ${response.statusCode}");
-      print("Response body: ${response.body}");
-      throw Exception("Failed to add reminder");
-    }
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // ✅ Request permissions for Android 13+
+    await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
   }
 
-  static Future<void> deleteReminder(int id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/$id'));
-    if (response.statusCode != 200 && response.statusCode != 204) {
-      print("Delete reminder failed with status: ${response.statusCode}");
-      print("Response body: ${response.body}");
-      throw Exception("Failed to delete reminder");
-    }
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledNotificationDateTime,
+  }) async {
+    final tz.TZDateTime scheduledDate =
+        tz.TZDateTime.from(scheduledNotificationDateTime, tz.local);
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'reminder_channel',
+          'Reminders',
+          channelDescription: 'Channel for reminder notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
   }
 }
