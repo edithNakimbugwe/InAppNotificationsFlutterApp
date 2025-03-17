@@ -10,9 +10,17 @@ class ReminderController with ChangeNotifier {
     _reminders = await ApiService.getReminders();
     notifyListeners();
   }
+  
 
-  Future<void> addReminder(String title, DateTime dateTime) async {
-    final newReminder = Reminder(title: title, dateTime: dateTime);
+
+  Future<void> addReminder(String title, String description, DateTime reminderTime)
+ async {
+    final newReminder = Reminder(
+  title: title,
+  description: description, // or supply a description from user input if available
+  reminderTime: reminderTime,
+);
+
     await ApiService.addReminder(newReminder);
     await fetchReminders();
   }

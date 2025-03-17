@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:reminder_app/models/reminder_model.dart';
 import '../controllers/reminder_controller.dart';
 
 class HomeView extends StatefulWidget {
@@ -10,6 +9,7 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   DateTime? _selectedDateTime;
 
   @override
@@ -19,16 +19,31 @@ class _HomeViewState extends State<HomeView> {
   }
 
   void _addReminder() {
-    if (_titleController.text.isNotEmpty && _selectedDateTime != null) {
-      Provider.of<ReminderController>(context, listen: false)
-          .addReminder(_titleController.text, _selectedDateTime!);
+    if (_titleController.text.isNotEmpty &&
+        _descriptionController.text.isNotEmpty &&
+        _selectedDateTime != null) {
+      Provider.of<ReminderController>(context, listen: false).addReminder(
+        _titleController.text,
+        _descriptionController.text,
+        _selectedDateTime!,
+      );
       _titleController.clear();
+      _descriptionController.clear();
       _selectedDateTime = null;
       Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields and select a time.")),
+      );
     }
   }
 
   void _showAddReminderDialog() {
+    // Clear controllers before showing dialog.
+    _titleController.clear();
+    _descriptionController.clear();
+    _selectedDateTime = null;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -40,6 +55,10 @@ class _HomeViewState extends State<HomeView> {
               TextField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: "Title"),
+              ),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(labelText: "Description"),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -69,11 +88,21 @@ class _HomeViewState extends State<HomeView> {
                 },
                 child: const Text("Pick Date & Time"),
               ),
+              if (_selectedDateTime != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text("Selected: ${_selectedDateTime.toString()}"),
+                ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _titleController.clear();
+                _descriptionController.clear();
+                _selectedDateTime = null;
+              },
               child: const Text("Cancel"),
             ),
             ElevatedButton(
@@ -95,10 +124,16 @@ class _HomeViewState extends State<HomeView> {
           return ListView.builder(
             itemCount: controller.reminders.length,
             itemBuilder: (context, index) {
-              Reminder reminder = controller.reminders[index];
+              var reminder = controller.reminders[index];
               return ListTile(
                 title: Text(reminder.title),
-                subtitle: Text(reminder.dateTime.toString()),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(reminder.description),
+                    Text(reminder.reminderTime.toString()),
+                  ],
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => controller.deleteReminder(reminder.id!),

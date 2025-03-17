@@ -1,23 +1,35 @@
 class Reminder {
   final int? id;
   final String title;
-  final DateTime dateTime;
+  final String description;
+  final DateTime reminderTime;
 
-  Reminder({this.id, required this.title, required this.dateTime});
+  Reminder({
+    this.id,
+    required this.title,
+    required this.description,
+    required this.reminderTime,
+  });
 
   factory Reminder.fromJson(Map<String, dynamic> json) {
     return Reminder(
       id: json['id'],
       title: json['title'],
-      dateTime: DateTime.parse(json['dateTime']),
+      description: json['description'],
+      reminderTime: DateTime.parse(json['reminderTime']),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final data = <String, dynamic>{
       'title': title,
-      'dateTime': dateTime.toIso8601String(),
+      'description': description,
+      'reminderTime': reminderTime.toIso8601String(),
     };
+    // Only include 'id' if it's not null
+    if (id != null) {
+      data['id'] = id;
+    }
+    return data;
   }
 }
